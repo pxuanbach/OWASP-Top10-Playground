@@ -23,13 +23,22 @@ app.get('/attendance', (req, res) => {
 });
 
 
+// Route phục vụ giao diện quên mật khẩu
+app.get('/forgot-password', (req, res) => {
+    res.sendFile(path.join(__dirname + "/views", 'forgot-password.html'));
+});
+
 
 // Import login service
 const { handleLogin } = require('./services/loginService');
+const { forgotPassword } = require('./services/forgotService');
 
 // API route to handle login
 app.post('/api/login', handleLogin);
 
+// API nhận email để reset mật khẩu (không xác minh danh tính)
+app.post('/api/forgot-password', forgotPassword);
+
 app.listen(PORT, () => {
-    console.log(`Server is running at http://localhost:${PORT}/attendance`);
+    console.log(`Server is running at http://localhost:${PORT}/forgot-password`);
 });
