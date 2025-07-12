@@ -1,23 +1,23 @@
 const PostgresDB = require('../lib/postgres');
 const bcrypt = require('bcrypt');
 const db = new PostgresDB();
+const crypto = require('crypto');
 
-// Low security: plaintext password, no validation, no hash
+// A02 - Low security: plaintext password, no validation, no hash
 async function handleRegisterLowSecurity(req, res) {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).send('Missing username or password');
     }
-    // Log credentials directly (for demonstration of low security)
-    console.log('New user with username:', username, 'password:', password);
 
-    // Vulnerable: direct string interpolation (SQL injection risk!)
-    const query = `INSERT INTO users (username, password, role) VALUES ('${username}', '${password}', 'user')`;
+    const md5Hash = crypto.createHash('md5').update(password).digest('hex');
+    console.log('New user with username:', username, 'md5(password):', md5Hash);
+    const query = `INSERT INTO users (username, password, role) VALUES ('${username}', '${md5Hash}', 'user')`;
     await db.query(query);
     res.redirect('/login');
 }
 
-// High security: validate, hash password, parameterized query
+// A02 - High security: validate, hash password, parameterized query
 async function handleRegisterHighSecurity(req, res) {
     const { username, password, role } = req.body;
     if (!username || !password) {
