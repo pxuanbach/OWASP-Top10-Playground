@@ -1,0 +1,9 @@
+{
+  "db_host": "localhost",
+  "db_port": 54321,
+  "db_user": "admin",
+  "db_password": "supersecret",
+  "api_key": "FAKE-API-KEY-123456",
+  "jwt_secret": "publicly_exposed_secret_key",
+  "feature_flag": true
+}

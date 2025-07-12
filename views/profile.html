@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thông tin cá nhân</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" />
+  <style>
+    body { background: #f5f6fa; }
+    .banner {
+      width: 100vw;
+      min-height: 180px;
+      background: linear-gradient(120deg, #1976d2 60%, #42a5f5 100%);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      position: relative;
+      margin-bottom: 64px;
+    }
+    .avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 6px solid #fff;
+      position: absolute;
+      bottom: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #eee;
+      box-shadow: 0 4px 16px #1976d233;
+    }
+    .container {
+      max-width: 500px;
+      margin: 80px auto 40px auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 16px #1976d211;
+      padding: 32px 24px 24px 24px;
+      position: relative;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 24px;
+      margin-top: 40px;
+      color: #1976d2;
+      letter-spacing: 1px;
+    }
+    .profile-info {
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .profile-info label {
+      font-weight: 600;
+      margin-top: 10px;
+      color: #1976d2;
+    }
+    .profile-info input[type="text"],
+    .profile-info input[type="email"] {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #b0bec5;
+      background: #f7fafd;
+      margin-bottom: 4px;
+      transition: border 0.2s;
+    }
+    .profile-info input[type="text"]:focus,
+    .profile-info input[type="email"]:focus {
+      border: 1.5px solid #1976d2;
+      outline: none;
+    }
+    .profile-count {
+      color: #1976d2;
+      font-weight: bold;
+      font-size: 1.1em;
+      margin-bottom: 8px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      background: #1976d2;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1em;
+      margin-top: 12px;
+      transition: background 0.2s, box-shadow 0.2s;
+      box-shadow: 0 2px 8px #1976d233;
+    }
+    button:hover {
+      background: #125ea7;
+      box-shadow: 0 4px 16px #1976d244;
+    }
+    .message { min-height: 20px; color: green; text-align: center; margin-top: 8px; }
+    a { display: block; text-align: center; color: #1976d2; margin-top: 16px; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+  <body>
+  <div class="banner">
+    <img class="avatar" id="avatar-img" src="https://randomuser.me/api/portraits/men/32.jpg" alt="avatar" />
+  </div>
+  <div class="container">
+    <h2>Thông tin cá nhân</h2>
+    <form id="profile-form" class="profile-info">
+      <label>Họ tên</label>
+      <input id="profile-name" type="text" required />
+      <label>Username</label>
+      <input id="profile-username" type="text" required />
+      <label>Email</label>
+      <input id="profile-email" type="email" required />
+      <label>Số điện thoại</label>
+      <input id="profile-phone" type="text" required />
+      <label>Số bài đăng</label>
+      <span class="profile-count" id="profile-post-count"></span>
+      <label>Vai trò</label>
+      <input id="profile-role" type="text" readonly required />
+      <button type="submit" style="margin-top:16px">Lưu cập nhật</button>
+      <div id="profile-message" class="message"></div>
+    </form>
+    <a href="/posts">Quay lại quản lý bài viết</a>
+  </div>
+  <script>
+    // Lấy profile từ API (mặc định username là 'dat')
+    let currentUser = null;
+    async function loadProfile(username) {
+      const res = await fetch('/api/profile/' + username);
+      if (!res.ok) {
+        document.getElementById('profile-message').textContent = 'Không tìm thấy user!';
+        return;
+      }
+      const data = await res.json();
+      if (!data.success) {
+        document.getElementById('profile-message').textContent = 'Không tìm thấy user!';
+        return;
+      }
+      currentUser = data.profile;
+      document.getElementById('profile-name').value = currentUser.name;
+      document.getElementById('profile-username').value = currentUser.username;
+      document.getElementById('profile-email').value = currentUser.email;
+      document.getElementById('profile-phone').value = currentUser.phone;
+      document.getElementById('profile-role').value = currentUser.role;
+      // Đổi avatar nếu có
+      let avatarUrl = currentUser.avatar || (currentUser.username === 'bach' ? 'https://randomuser.me/api/portraits/men/1.jpg' : 'https://randomuser.me/api/portraits/men/32.jpg');
+      document.getElementById('avatar-img').src = avatarUrl;
+      fetchPostCount(currentUser.username).then(count => {
+        document.getElementById('profile-post-count').textContent = count;
+      });
+    }
+    // Lấy số bài đăng từ API posts
+    async function fetchPostCount(username) {
+      const res = await fetch('/api/posts');
+      if (!res.ok) return 0;
+      const data = await res.json();
+      if (!data.success) return 0;
+      return data.posts.filter(post => post.author_id === username).length;
+    }
+    // Xử lý cập nhật profile
+    document.getElementById('profile-form').onsubmit = async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('profile-username').value;
+      const body = {
+        name: document.getElementById('profile-name').value,
+        email: document.getElementById('profile-email').value,
+        phone: document.getElementById('profile-phone').value,
+        role: document.getElementById('profile-role').value
+      };
+      const res = await fetch('/api/profile/' + username, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        document.getElementById('profile-message').textContent = 'Lỗi cập nhật!';
+        return;
+      }
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('profile-message').textContent = 'Cập nhật thành công!';
+        fetchPostCount(username).then(count => {
+          document.getElementById('profile-post-count').textContent = count;
+        });
+      } else {
+        document.getElementById('profile-message').textContent = 'Lỗi cập nhật!';
+      }
+    };
+    // Lấy username từ URL: /profile/:username
+    const pathParts = window.location.pathname.split('/');
+    let username = pathParts[pathParts.length - 1] || 'dat';
+    loadProfile(username);
+  </script>
+</body>
+</html>
