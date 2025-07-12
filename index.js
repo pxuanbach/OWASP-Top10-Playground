@@ -9,12 +9,18 @@ const PORT = 3000;
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.json());
 
-// Route to serve login.html
-// Phục vụ file tĩnh trong thư mục 'public'
-app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname + "/views", 'login.html'));
+});
+app.get('/register', (req, res) => {
+    res.sendFile(path.join(__dirname + "/views", 'register.html'));
+});
+app.get('/home', (req, res) => {
+    res.sendFile(path.join(__dirname + "/views", 'home.html'));
+});
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname + "/views", 'admin.html'));
 });
 
 // Route hiển thị màn hình danh sách chấm công
@@ -29,12 +35,21 @@ app.get('/forgot-password', (req, res) => {
 });
 
 
-// Import login service
-const { handleLogin } = require('./services/loginService');
-const { forgotPassword } = require('./services/forgotService');
+const { 
+    handleLoginLowSecurity,
+    handleLoginHighSecurity
+} = require('./services/loginService');
+const {
+    handleRegisterLowSecurity,
+    handleRegisterHighSecurity
+} = require('./services/registerService');
 
-// API route to handle login
-app.post('/api/login', handleLogin);
+
+app.post('/api/login', handleLoginLowSecurity);
+// app.post('/api/login', handleLoginHighSecurity);
+
+app.post('/api/register', handleRegisterLowSecurity);
+// app.post('/api/register', handleRegisterHighSecurity);
 
 // API nhận email để reset mật khẩu (không xác minh danh tính)
 app.post('/api/forgot-password', forgotPassword);
