@@ -23,8 +23,12 @@ const upload = multer({ storage });
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Middleware to parse urlencoded form data
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+app.use(express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }));
+
+
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(express.json());
 
 // Route trả về file HTML
 app.get('/', (req, res) => {
@@ -75,7 +79,34 @@ const {
     getAllUsersHighSecurity
 } = require('./services/usersService');
 
+app.get('/posts', (req, res) => {
+    res.sendFile(path.join(__dirname + "/views", 'posts.html'));
+});
 
+app.get('/profile/:username', (req, res) => {
+    res.sendFile(path.join(__dirname + "/views", 'profile.html'));
+});
+
+const { handleLoginLowSecurity } = require('./services/loginService');
+const { handleRegisterLowSecurity } = require('./services/registerService');
+const { forgotPassword } = require('./services/forgotService');
+const { createPost, getPosts, getPostById, updatePost, deletePost } = require('./services/postService');
+const { getProfile, updateProfile, createProfile } = require('./services/profileService');
+
+app.get('/api/posts', getPosts);
+app.get('/api/posts/:id', getPostById);
+app.post('/api/posts', createPost);
+app.put('/api/posts/:id', updatePost);
+app.delete('/api/posts/:id', deletePost);
+
+// Profile API
+app.get('/api/profile/:username', getProfile);
+app.put('/api/profile/:username', updateProfile);
+app.post('/api/profile', createProfile);
+
+app.use((err, req, res, next) => {
+    res.status(500).send('<pre>' + (err.stack || err.toString()) + '</pre>');
+});
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname + "/views", 'login.html'));
 });
@@ -176,5 +207,5 @@ app.post('/upload', upload.single('updateFile'), (req, res) => {
 
 
 app.listen(PORT, () => {
-    console.log(`Server is running at http://localhost:${PORT}`);
+    console.log(`Server is running at http://localhost:${PORT}/posts`);
 });
