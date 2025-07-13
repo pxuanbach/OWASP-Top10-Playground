@@ -35,11 +35,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname + "/views", 'form.html'));
 });
 
-// Route trả về file HTML
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname + "/views", 'form.html'));
-});
-
 // Session middleware
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -66,6 +61,7 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
+const { fetchURL } = require('./services/formService');
 const { 
     handleLoginLowSecurity,
     handleLoginHighSecurity
@@ -78,17 +74,6 @@ const {
     getAllUsersLowSecurity,
     getAllUsersHighSecurity
 } = require('./services/usersService');
-
-app.get('/posts', (req, res) => {
-    res.sendFile(path.join(__dirname + "/views", 'posts.html'));
-});
-
-app.get('/profile/:username', (req, res) => {
-    res.sendFile(path.join(__dirname + "/views", 'profile.html'));
-});
-
-const { handleLoginLowSecurity } = require('./services/loginService');
-const { handleRegisterLowSecurity } = require('./services/registerService');
 const { forgotPassword } = require('./services/forgotService');
 const { createPost, getPosts, getPostById, updatePost, deletePost } = require('./services/postService');
 const { getProfile, updateProfile, createProfile } = require('./services/profileService');
@@ -113,6 +98,14 @@ app.get('/login', (req, res) => {
 
 app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname + "/views", 'register.html'));
+});
+
+app.get('/posts', (req, res) => {
+    res.sendFile(path.join(__dirname + "/views", 'posts.html'));
+});
+
+app.get('/profile/:username', (req, res) => {
+    res.sendFile(path.join(__dirname + "/views", 'profile.html'));
 });
 
 app.post('/logout', (req, res) => {
@@ -159,11 +152,6 @@ if (SECURITY_LEVEL === 'low') {
     app.get('/admin/users', requireAuth, requireAdmin, getAllUsersHighSecurity);
 }
 
-const { fetchURL } = require('./services/formService');
-
-// API route to handle login
-app.post('/api/login', handleLogin);
-
 // Route dễ bị SSRF
 app.post('/fetch', async (req, res) => {
   const url = req.body.url;
@@ -186,12 +174,6 @@ app.get('/dashboard', (req, res) => {
     return res.sendFile(path.join(__dirname, 'views', 'dashboard.html'));
   }
 
-  res.redirect('/login');
-});
-
-
-app.get('/logout', (req, res) => {
-  res.clearCookie('session');
   res.redirect('/login');
 });
 

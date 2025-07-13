@@ -37,6 +37,15 @@ async function initData() {
              ON CONFLICT (username) DO NOTHING`,
             ['user1', passwordHash, 'user', 0, null, 'Saigon']
         );
+
+        // Sample posts data
+        await db.query(
+            `INSERT INTO posts (id, title, content, author_id, created_at, updated_at) VALUES
+                (1, 'Bài viết mẫu 1', 'Đây là nội dung bài viết mẫu số 1.', 'admin0', NOW(), NOW()),
+                (2, 'Bài viết mẫu 2', 'Đây là nội dung bài viết mẫu số 2.', 'admin1', NOW(), NOW()),
+                (3, 'Bài viết mẫu 3', 'Đây là nội dung bài viết mẫu số 3.', 'user0', NOW(), NOW())
+            ON CONFLICT (id) DO NOTHING`
+        );
         console.log('Demo users inserted (if not already present).');
     } catch (err) {
         console.error('Error initializing data:', err);
