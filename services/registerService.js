@@ -7,7 +7,7 @@ const crypto = require('crypto');
 async function handleRegisterLowSecurity(req, res) {
     const { username, password } = req.body;
     if (!username || !password) {
-        return res.status(400).send('Missing username or password');
+        return res.status(400).redirect('/register?error=Missing username or password');
     }
 
     const md5Hash = crypto.createHash('md5').update(password).digest('hex');
@@ -21,13 +21,13 @@ async function handleRegisterLowSecurity(req, res) {
 async function handleRegisterHighSecurity(req, res) {
     const { username, password, role } = req.body;
     if (!username || !password) {
-        return res.status(400).send('Missing username or password');
+        return res.status(400).redirect('/register?error=Missing username or password');
     }
 
     // Check if user exists
     const exists = await db.query('SELECT 1 FROM users WHERE username = $1', [username]);
     if (exists.rows.length > 0) {
-        return res.status(409).send('Username already exists');
+        return res.status(409).redirect('/register?error=Username already exists');
     }
     const hash = await bcrypt.hash(password, 10);
     await db.query(

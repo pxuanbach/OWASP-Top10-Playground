@@ -24,15 +24,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
-app.use(express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }));
+app.use('/public', express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }));
 
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.json());
 
-// Route trả về file HTML
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname + "/views", 'form.html'));
+  // res.sendFile(path.join(__dirname + "/views", 'form.html'));
+  return res.redirect('/login');
 });
 
 // Session middleware
@@ -92,10 +92,26 @@ app.use((err, req, res, next) => {
     res.status(500).send('<pre>' + (err.stack || err.toString()) + '</pre>');
 });
 app.get('/login', (req, res) => {
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    if (level === 'high' && req.session && req.session.user) {
+        if (req.session.user.role === 'admin') {
+            return res.redirect('/admin');
+        } else {
+            return res.redirect('/home');
+        }
+    }
     res.sendFile(path.join(__dirname + "/views", 'login.html'));
 });
 
 app.get('/register', (req, res) => {
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    if (level === 'high' && req.session && req.session.user) {
+        if (req.session.user.role === 'admin') {
+            return res.redirect('/admin');
+        } else {
+            return res.redirect('/home');
+        }
+    }
     res.sendFile(path.join(__dirname + "/views", 'register.html'));
 });
 
@@ -151,8 +167,22 @@ app.post('/low/api/register', handleRegisterLowSecurity);
 app.post('/high/api/register', handleRegisterHighSecurity);
 
 // A03: User list
-app.get('/low/admin/users', getAllUsersLowSecurity);
-app.get('/high/admin/users', requireAuth, requireAdmin, getAllUsersHighSecurity);
+app.get('/admin/users', (req, res, next) => {
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    if (level === 'high') {
+        return requireAuth(req, res, function() {
+            return requireAdmin(req, res, next);
+        });
+    }
+    next();
+}, (req, res) => {
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    if (level === 'high') {
+        return getAllUsersHighSecurity(req, res);
+    } else {
+        return getAllUsersLowSecurity(req, res);
+    }
+});
 
 // Route dễ bị SSRF
 app.post('/fetch', async (req, res) => {
