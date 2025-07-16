@@ -177,14 +177,27 @@ app.get('/dashboard', (req, res) => {
   res.redirect('/login');
 });
 
+// A08
 app.get('/upload', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'upload.html'));
 });
 
-app.post('/upload', upload.single('updateFile'), (req, res) => {
-  // ❗❗❗ LỖI: Không kiểm tra chữ ký số
-  console.log(`File uploaded to: ${req.file.path}`);
-  res.send(`<p>File uploaded (no signature check!): ${req.file.originalname}</p>`);
+// ❌ Route A08 lỗi – không kiểm tra chữ ký
+app.post('/upload/insecure', upload.single('updateFile'), (req, res) => {
+  const result = insecureSave(req.file);
+  res.send(`<p>(INSECURE) File uploaded: ${result.filename}</p>`);
+});
+
+// ✅ Route FIX – kiểm tra SHA256 hash
+app.post('/upload/secure', upload.single('updateFile'), (req, res) => {
+  const expectedHash = req.body.expectedHash?.trim();
+
+  try {
+    const result = secureSave(req.file, expectedHash);
+    res.send(`<p>(SECURE) Verified & uploaded: ${result.filename}</p>`);
+  } catch (err) {
+    res.status(400).send(`<p style="color:red">Error: ${err.message}</p>`);
+  }
 });
 
 
