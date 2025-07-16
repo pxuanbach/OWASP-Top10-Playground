@@ -56,7 +56,26 @@ const requireAuth = (req, res, next) => {
 
 const requireAdmin = (req, res, next) => {
     if (!req.session.user || req.session.user.role !== 'admin') {
-        return res.status(403).send('Access denied');
+        return res.status(403).send(`
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Access Denied</title>
+                <meta http-equiv="refresh" content="5;url=/home" />
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            </head>
+            <body class="bg-light">
+                <div class="container d-flex justify-content-center align-items-center min-vh-100">
+                    <div class="card shadow p-4" style="min-width: 350px; max-width: 400px; width: 100%;">
+                        <h2 class="mb-4 text-center text-danger">Access Denied</h2>
+                        <p class="text-center">You do not have permission to access this page.</p>
+                        <p class="text-center text-secondary">Redirecting to home in 5 seconds...</p>
+                        <div class="text-center mt-3"><a href="/home" class="btn btn-primary">Go to Home</a></div>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `);
     }
     next();
 };

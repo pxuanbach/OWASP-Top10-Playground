@@ -56,7 +56,7 @@ async function handleLoginHighSecurity(req, res) {
         // Increase failed login attempts
         const failedAttempts = (user.failed_attempts || 0) + 1;
         let lockedUntil = null;
-        if (failedAttempts >= 5) {
+        if (failedAttempts > 5) {
             // Lock the account for 15 minutes after 5 failed attempts
             lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
         }

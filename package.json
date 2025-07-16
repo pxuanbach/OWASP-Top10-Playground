@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npx playwright test --headed --workers 1",
     "start": "nodemon index.js",
     "initdb": "node infras/init_db.js",
     "initdata": "node infras/init_data.js"
@@ -13,17 +13,20 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bcrypt": "^6.0.0",
     "axios": "^1.10.0",
+    "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
-    "dotenv": "^17.2.0",
     "cookie-parser": "^1.4.7",
+    "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "express-session": "^1.18.1",
+    "lodash": "4.17.15",
+    "moment": "2.19.0",
     "multer": "^2.0.1",
     "nodemon": "^3.1.10",
-    "pg": "^8.16.3",
-    "lodash": "4.17.15",
-    "moment": "2.19.0"
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.1"
   }
 }
