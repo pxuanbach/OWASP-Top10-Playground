@@ -24,15 +24,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
-app.use(express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }));
+app.use('/public', express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }));
 
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.json());
 
-// Route trả về file HTML
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname + "/views", 'form.html'));
+  // res.sendFile(path.join(__dirname + "/views", 'form.html'));
+  return res.redirect('/login');
 });
 
 // Session middleware
@@ -56,7 +56,26 @@ const requireAuth = (req, res, next) => {
 
 const requireAdmin = (req, res, next) => {
     if (!req.session.user || req.session.user.role !== 'admin') {
-        return res.status(403).send('Access denied');
+        return res.status(403).send(`
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Access Denied</title>
+                <meta http-equiv="refresh" content="5;url=/home" />
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            </head>
+            <body class="bg-light">
+                <div class="container d-flex justify-content-center align-items-center min-vh-100">
+                    <div class="card shadow p-4" style="min-width: 350px; max-width: 400px; width: 100%;">
+                        <h2 class="mb-4 text-center text-danger">Access Denied</h2>
+                        <p class="text-center">You do not have permission to access this page.</p>
+                        <p class="text-center text-secondary">Redirecting to home in 5 seconds...</p>
+                        <div class="text-center mt-3"><a href="/home" class="btn btn-primary">Go to Home</a></div>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `);
     }
     next();
 };
@@ -74,7 +93,6 @@ const {
     getAllUsersLowSecurity,
     getAllUsersHighSecurity
 } = require('./services/usersService');
-const { forgotPassword } = require('./services/forgotService');
 const { createPost, getPosts, getPostById, updatePost, deletePost } = require('./services/postService');
 const { getProfile, updateProfile, createProfile } = require('./services/profileService');
 
@@ -93,10 +111,26 @@ app.use((err, req, res, next) => {
     res.status(500).send('<pre>' + (err.stack || err.toString()) + '</pre>');
 });
 app.get('/login', (req, res) => {
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    if (level === 'high' && req.session && req.session.user) {
+        if (req.session.user.role === 'admin') {
+            return res.redirect('/admin');
+        } else {
+            return res.redirect('/home');
+        }
+    }
     res.sendFile(path.join(__dirname + "/views", 'login.html'));
 });
 
 app.get('/register', (req, res) => {
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    if (level === 'high' && req.session && req.session.user) {
+        if (req.session.user.role === 'admin') {
+            return res.redirect('/admin');
+        } else {
+            return res.redirect('/home');
+        }
+    }
     res.sendFile(path.join(__dirname + "/views", 'register.html'));
 });
 
@@ -108,49 +142,66 @@ app.get('/profile/:username', (req, res) => {
     res.sendFile(path.join(__dirname + "/views", 'profile.html'));
 });
 
+app.get('/config', (req, res) => {
+    res.sendFile(path.join(__dirname + "/views", 'config.html'));
+});
+
 app.post('/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/login');
 });
 
-const SECURITY_LEVEL = process.env.SECURITY_LEVEL || 'high';
-console.log(`Security level set to: ${SECURITY_LEVEL}`);
 
-if (SECURITY_LEVEL === 'low') {
-    // A01
-    app.get('/home', (req, res) => {
-        res.sendFile(path.join(__dirname + "/views", 'home.html'));
-    });
-    app.get('/admin', (req, res) => {
-        res.sendFile(path.join(__dirname + "/views", 'admin.html'));
-    });
+// Always expose both /low and /high endpoints for each API
+// A01: Home & Admin
 
-    // A01 & A07
-    app.post('/api/login', handleLoginLowSecurity);
-    
-    // A02
-    app.post('/api/register', handleRegisterLowSecurity);
+app.get('/home', (req, res, next) => {
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    if (level === 'high') {
+        return requireAuth(req, res, next);
+    }
+    next();
+}, (req, res) => {
+    res.sendFile(path.join(__dirname + "/views", 'home.html'));
+});
 
-    // A03
-    app.get('/admin/users', getAllUsersLowSecurity);
-} else {
-    // A01
-    app.get('/home', requireAuth, (req, res) => {
-        res.sendFile(path.join(__dirname + "/views", 'home.html'));
-    });
-    app.get('/admin', requireAuth, requireAdmin, (req, res) => {
-        res.sendFile(path.join(__dirname + "/views", 'admin.html'));
-    });
+app.get('/admin', (req, res, next) => {
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    if (level === 'high') {
+        return requireAuth(req, res, function() {
+            return requireAdmin(req, res, next);
+        });
+    }
+    next();
+}, (req, res) => {
+    res.sendFile(path.join(__dirname + "/views", 'admin.html'));
+});
 
-    // A01 & A07
-    app.post('/api/login', handleLoginHighSecurity);
+// A01 & A07: Login
+app.post('/low/api/login', handleLoginLowSecurity);
+app.post('/high/api/login', handleLoginHighSecurity);
 
-    // A02
-    app.post('/api/register', handleRegisterHighSecurity);
+// A02: Register
+app.post('/low/api/register', handleRegisterLowSecurity);
+app.post('/high/api/register', handleRegisterHighSecurity);
 
-    // A03
-    app.get('/admin/users', requireAuth, requireAdmin, getAllUsersHighSecurity);
-}
+// A03: User list
+app.get('/admin/users', (req, res, next) => {
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    if (level === 'high') {
+        return requireAuth(req, res, function() {
+            return requireAdmin(req, res, next);
+        });
+    }
+    next();
+}, (req, res) => {
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    if (level === 'high') {
+        return getAllUsersHighSecurity(req, res);
+    } else {
+        return getAllUsersLowSecurity(req, res);
+    }
+});
 
 // Route dễ bị SSRF
 app.post('/fetch', async (req, res) => {
@@ -202,5 +253,5 @@ app.post('/upload/secure', upload.single('updateFile'), (req, res) => {
 
 
 app.listen(PORT, () => {
-    console.log(`Server is running at http://localhost:${PORT}/posts`);
+    console.log(`Server is running at http://localhost:${PORT}/config`);
 });
