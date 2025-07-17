@@ -105,22 +105,18 @@
   <div class="container">
     <h2>Thông tin cá nhân</h2>
     <form id="profile-form" class="profile-info">
-      <label>Họ tên</label>
-      <input id="profile-name" type="text" required />
-      <label>Username</label>
-      <input id="profile-username" type="text" required />
-      <label>Email</label>
-      <input id="profile-email" type="email" required />
-      <label>Số điện thoại</label>
-      <input id="profile-phone" type="text" required />
-      <label>Số bài đăng</label>
-      <span class="profile-count" id="profile-post-count"></span>
-      <label>Vai trò</label>
-      <input id="profile-role" type="text" readonly required />
+      <label for="profile-username">Tên đăng nhập</label>
+      <input type="text" id="profile-username" readonly />
+
+      <label for="profile-location">Địa chỉ</label>
+      <input type="text" id="profile-location" />
+
+      <label for="profile-role">Vai trò</label>
+      <input type="text" id="profile-role" readonly />
       <button type="submit" style="margin-top:16px">Lưu cập nhật</button>
       <div id="profile-message" class="message"></div>
     </form>
-    <a href="/posts">Quay lại quản lý bài viết</a>
+    <a href="/home">Quay lại màn hình chính</a>
   </div>
   <script>
     // Lấy profile từ API (mặc định username là 'dat')
@@ -137,17 +133,12 @@
         return;
       }
       currentUser = data.profile;
-      document.getElementById('profile-name').value = currentUser.name;
       document.getElementById('profile-username').value = currentUser.username;
-      document.getElementById('profile-email').value = currentUser.email;
-      document.getElementById('profile-phone').value = currentUser.phone;
+      document.getElementById('profile-location').value = currentUser.location || '';
       document.getElementById('profile-role').value = currentUser.role;
-      // Đổi avatar nếu có
+      // Change avatar if needed
       let avatarUrl = currentUser.avatar || (currentUser.username === 'bach' ? 'https://randomuser.me/api/portraits/men/1.jpg' : 'https://randomuser.me/api/portraits/men/32.jpg');
       document.getElementById('avatar-img').src = avatarUrl;
-      fetchPostCount(currentUser.username).then(count => {
-        document.getElementById('profile-post-count').textContent = count;
-      });
     }
     // Lấy số bài đăng từ API posts
     async function fetchPostCount(username) {
@@ -162,10 +153,7 @@
       e.preventDefault();
       const username = document.getElementById('profile-username').value;
       const body = {
-        name: document.getElementById('profile-name').value,
-        email: document.getElementById('profile-email').value,
-        phone: document.getElementById('profile-phone').value,
-        role: document.getElementById('profile-role').value
+        location: document.getElementById('profile-location').value
       };
       const res = await fetch('/api/profile/' + username, {
         method: 'PUT',
@@ -179,13 +167,11 @@
       const data = await res.json();
       if (data.success) {
         document.getElementById('profile-message').textContent = 'Cập nhật thành công!';
-        fetchPostCount(username).then(count => {
-          document.getElementById('profile-post-count').textContent = count;
-        });
       } else {
         document.getElementById('profile-message').textContent = 'Lỗi cập nhật!';
       }
     };
+
     // Lấy username từ URL: /profile/:username
     const pathParts = window.location.pathname.split('/');
     let username = pathParts[pathParts.length - 1] || 'dat';

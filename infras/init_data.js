@@ -10,40 +10,33 @@ async function initData() {
         const passwordHash = await bcrypt.hash('sample123', 10);
         const md5Hash = crypto.createHash('md5').update('sample123').digest('hex');
         
-        // admin with MD5 hash password
-        await db.query(
-            `INSERT INTO users (username, password, role, failed_attempts, locked_until, location) VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (username) DO NOTHING`,
-            ['admin0', md5Hash, 'admin', 0, null, '<script>alert("XSS-admin0")</script>']
-        );
+        users_data = [
+            ['dat', passwordHash, 'user', 0, null, 'Hanoi'],
+            ['admin0', md5Hash, 'admin', 0, null, '<script>alert("XSS-admin0")</script>'],
+            ['admin1', passwordHash, 'admin', 0, null, 'Hanoi'],
+            ['user0', md5Hash, 'user', 0, null, '<img src=x onerror=alert("XSS-user0")>'],
+            ['user1', passwordHash, 'user', 0, null, 'Ha Noi'],
+            ['user2', md5Hash, 'user', 0, null, 'Khanh Hoa'],
+            ['user3', passwordHash, 'user', 0, null, 'Ho Chi Minh'],
+            ['user4', md5Hash, 'user', 0, null, 'Ho Chi Minh'],
+            ['user5', passwordHash, 'user', 0, null, 'Binh Dinh'],
+        ]
 
-        // admin with Bcrypt hash password
-        await db.query(
-            `INSERT INTO users (username, password, role, failed_attempts, locked_until, location) VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (username) DO NOTHING`,
-            ['admin1', passwordHash, 'admin', 0, null, 'Hanoi']
-        );
-
-        // sample user with MD5 hash password
-        await db.query(
-            `INSERT INTO users (username, password, role, failed_attempts, locked_until, location) VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (username) DO NOTHING`,
-            ['user0', md5Hash, 'user', 0, null, '<img src=x onerror=alert("XSS-user0")>']
-        );
-
-        // sample user with Bcrypt hash password
-        await db.query(
-            `INSERT INTO users (username, password, role, failed_attempts, locked_until, location) VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (username) DO NOTHING`,
-            ['user1', passwordHash, 'user', 0, null, 'Saigon']
-        );
+        for (const user of users_data) {
+            await db.query(
+                `INSERT INTO users (username, password, role, failed_attempts, locked_until, location) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (username) DO NOTHING`,
+                user
+            );
+        }
 
         // Sample posts data
         await db.query(
             `INSERT INTO posts (id, title, content, author_id, created_at, updated_at) VALUES
                 (1, 'Bài viết mẫu 1', 'Đây là nội dung bài viết mẫu số 1.', 'admin0', NOW(), NOW()),
                 (2, 'Bài viết mẫu 2', 'Đây là nội dung bài viết mẫu số 2.', 'admin1', NOW(), NOW()),
-                (3, 'Bài viết mẫu 3', 'Đây là nội dung bài viết mẫu số 3.', 'user0', NOW(), NOW())
+                (3, 'Bài viết mẫu 3', 'Đây là nội dung bài viết mẫu số 3.', 'user0', NOW(), NOW()),
+                (4, 'Bài viết mẫu 4', 'Đây là nội dung bài viết mẫu số 4.', 'dat', NOW(), NOW())
             ON CONFLICT (id) DO NOTHING`
         );
         console.log('Demo users inserted (if not already present).');
