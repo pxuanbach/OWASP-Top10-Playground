@@ -1,102 +1,87 @@
-// In-memory storage
-let posts = [
-  {
-    id: 1,
-    title: 'Bài viết mẫu 1',
-    content: 'Đây là nội dung bài viết mẫu số 1.',
-    author_id: 'dat',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 2,
-    title: 'Bài viết mẫu 2',
-    content: 'Đây là nội dung bài viết mẫu số 2.',
-    author_id: 'bach',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 3,
-    title: 'Bài viết mẫu 3',
-    content: 'Đây là nội dung bài viết mẫu số 3.',
-    author_id: 'dat',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }
-];
-let postLogs = posts.map(post => ({
-  post_id: post.id,
-  title: post.title,
-  content: post.content,
-  author_id: post.author_id,
-  action: 'create',
-  created_at: post.created_at
-}));
-let nextId = 4;
+const PostgresDB = require('../lib/postgres');
+const db = new PostgresDB();
 
-// LỖ HỔNG: Không kiểm tra quyền sở hữu khi sửa/xóa bài viết
+// Create a new post
 async function createPost(req, res) {
     const { title, content, author_id } = req.body;
     if (!title || !content || !author_id) {
-        return res.status(400).json({ success: false, message: 'Thiếu thông tin!' });
+        return res.status(400).json({ success: false, message: 'Missing required fields!' });
     }
-    const result = await db.query('INSERT INTO posts (title, content, author_id) VALUES ($1, $2, $3) RETURNING id', [title, content, author_id]);
-    const postId = result.rows[0].id;
-    await db.query('INSERT INTO post_logs (post_id, title, content, author_id, action) VALUES ($1, $2, $3, $4, $5)', [postId, title, content, author_id, 'create']);
-    res.json({ success: true, message: 'Đã tạo bài viết!' });
+    try {
+        const result = await db.query(
+            'INSERT INTO posts (title, content, author_id, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id, title, content, author_id, created_at, updated_at',
+            [title, content, author_id]
+        );
+        const post = result.rows[0];
+        // Optionally log the creation in post_logs if the table exists
+        // await db.query('INSERT INTO post_logs (post_id, title, content, author_id, action, created_at) VALUES ($1, $2, $3, $4, $5, NOW())', [post.id, post.title, post.content, post.author_id, 'create']);
+        res.status(201).json({ success: true, message: 'Post created successfully!', post });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Database error', error: err.message });
+    }
 }
 
+// Get all posts
 async function getPosts(req, res) {
-    // Trả về mảng posts, không join user
-    res.json({ success: true, posts });
+    try {
+        const result = await db.query('SELECT id, title, content, author_id, created_at, updated_at FROM posts ORDER BY created_at DESC');
+        res.json({ success: true, posts: result.rows });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Database error', error: err.message });
+    }
 }
 
+// Get a post by ID
 async function getPostById(req, res) {
     const { id } = req.params;
-    const post = posts.find(p => p.id === parseInt(id));
-    if (!post) return res.status(404).json({ success: false, message: 'Không tìm thấy!' });
-    res.json({ success: true, post });
+    try {
+        const result = await db.query('SELECT id, title, content, author_id, created_at, updated_at FROM posts WHERE id = $1', [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Post not found!' });
+        }
+        res.json({ success: true, post: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Database error', error: err.message });
+    }
 }
 
+// Update a post
 async function updatePost(req, res) {
     const { id } = req.params;
     const { title, content } = req.body;
-    // LỖ HỔNG: Không kiểm tra quyền sở hữu bài viết
-    const idx = posts.findIndex(p => p.id === parseInt(id));
-    if (idx === -1) return res.status(404).json({ success: false, message: 'Không tìm thấy!' });
-    posts[idx] = {
-        ...posts[idx],
-        title,
-        content,
-        updated_at: new Date().toISOString()
-    };
-    postLogs.push({
-        post_id: posts[idx].id,
-        title: posts[idx].title,
-        content: posts[idx].content,
-        author_id: posts[idx].author_id,
-        action: 'update',
-        created_at: new Date().toISOString()
-    });
-    res.json({ success: true, message: 'Đã cập nhật!' });
+    if (!title && !content) {
+        return res.status(400).json({ success: false, message: 'No fields to update!' });
+    }
+    try {
+        const result = await db.query(
+            'UPDATE posts SET title = COALESCE($1, title), content = COALESCE($2, content), updated_at = NOW() WHERE id = $3 RETURNING id, title, content, author_id, created_at, updated_at',
+            [title, content, id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Post not found!' });
+        }
+        // Optionally log the update in post_logs if the table exists
+        // await db.query('INSERT INTO post_logs (post_id, title, content, author_id, action, created_at) VALUES ($1, $2, $3, $4, $5, NOW())', [result.rows[0].id, result.rows[0].title, result.rows[0].content, result.rows[0].author_id, 'update']);
+        res.json({ success: true, post: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Database error', error: err.message });
+    }
 }
 
+// Delete a post
 async function deletePost(req, res) {
     const { id } = req.params;
-    const idx = posts.findIndex(p => p.id === parseInt(id));
-    if (idx === -1) return res.status(404).json({ success: false, message: 'Không tìm thấy!' });
-    const post = posts[idx];
-    posts.splice(idx, 1);
-    postLogs.push({
-        post_id: post.id,
-        title: post.title,
-        content: post.content,
-        author_id: post.author_id,
-        action: 'delete',
-        created_at: new Date().toISOString()
-    });
-    res.json({ success: true, message: 'Đã xóa!' });
+    try {
+        const result = await db.query('DELETE FROM posts WHERE id = $1 RETURNING id, title, content, author_id, created_at, updated_at', [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Post not found!' });
+        }
+        // Optionally log the deletion in post_logs if the table exists
+        // await db.query('INSERT INTO post_logs (post_id, title, content, author_id, action, created_at) VALUES ($1, $2, $3, $4, $5, NOW())', [result.rows[0].id, result.rows[0].title, result.rows[0].content, result.rows[0].author_id, 'delete']);
+        res.json({ success: true, message: 'Post deleted successfully!' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Database error', error: err.message });
+    }
 }
 
 module.exports = { createPost, getPosts, getPostById, updatePost, deletePost };

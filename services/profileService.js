@@ -1,43 +1,59 @@
-const _ = require('lodash');
-// In-memory profile storage for demo
-let profiles = [
-    {
-        username: 'dat',
-        name: 'Nguyễn Đức Chí Đạt',
-        email: 'dat@example.com',
-        phone: '0912345678',
-        role: 'user'
-    },
-    {
-        username: 'bach',
-        name: 'Phan Xuân Bách',
-        email: 'bach@example.com',
-        phone: '0987654321',
-        role: 'admin'
-    }
-];
+const PostgresDB = require('../lib/postgres');
 
-// Lấy profile theo username
-function getProfile(req, res) {
+const db = new PostgresDB();
+
+// Get profile by username
+async function getProfile(req, res) {
     const username = req.params.username;
-    const profile = profiles.find(p => p.username === username);
-    if (!profile) return res.status(404).json({ success: false, message: 'Không tìm thấy profile!' });
-    res.json({ success: true, profile });
+    try {
+        const result = await db.query('SELECT username, role, location FROM users WHERE username = $1', [username]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Profile not found!' });
+        }
+        res.json({ success: true, profile: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Database error', error: err.message });
+    }
 }
 
-// Cập nhật profile
-function updateProfile(req, res) {
+// Update profile
+async function updateProfile(req, res) {
     const username = req.params.username;
-    const idx = profiles.findIndex(p => p.username === username);
-    if (idx === -1) {
-        return res.status(404).json({ success: false, message: 'Không tìm thấy profile!' });
+    const { location } = req.body;
+    try {
+        const result = await db.query(
+            'UPDATE users SET location = $1 WHERE username = $2 RETURNING username, role, location',
+            [location, username]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Profile not found!' });
+        }
+        res.json({ success: true, profile: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Database error', error: err.message });
     }
-
-    _.merge(profiles[idx], req.body); // LỖ HỔNG: merge không kiểm soát, có thể ghi đè thuộc tính ngoài ý muốn
-    res.json({ success: true, profile: profiles[idx] });
 }
 
-// Tạo mới profile
+// Create new profile
+async function createProfile(req, res) {
+    const { username, password, role, location } = req.body;
+    try {
+        const result = await db.query(
+            'INSERT INTO users (username, password, role, location) VALUES ($1, $2, $3, $4) RETURNING username, role, location',
+            [username, password, role || 'user', location]
+        );
+        res.status(201).json({ success: true, profile: result.rows[0] });
+    } catch (err) {
+        if (err.code === '23505') { // unique_violation
+            res.status(400).json({ success: false, message: 'Username already exists!' });
+        } else {
+            res.status(500).json({ success: false, message: 'Database error', error: err.message });
+        }
+    }
+}
+
+module.exports = { getProfile, updateProfile, createProfile };
+
 function createProfile(req, res) {
     const { username, name, email, phone, role } = req.body;
     if (!username || !name || !email || !phone || !role) {
