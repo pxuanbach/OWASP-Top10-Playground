@@ -4,50 +4,58 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Quản lý bài viết</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body { background: #f5f6fa; }
-    .container { max-width: 800px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #eee; padding: 24px; }
-    h2 { text-align: center; margin-bottom: 24px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-    th, td { border: 1px solid #ddd; padding: 8px; }
-    th { background: #f0f0f0; }
-    .actions button { margin-right: 8px; }
-    form { margin-bottom: 24px; }
-    input, textarea { width: 100%; padding: 8px; margin-bottom: 8px; border-radius: 4px; border: 1px solid #ccc; }
-    button { padding: 8px 16px; border: none; border-radius: 4px; background: #1976d2; color: #fff; cursor: pointer; }
-    button:hover { background: #125ea7; }
+    .container-custom {
+      max-width: 800px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #eee;
+      padding: 24px;
+    }
     .message { min-height: 20px; color: green; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Quản lý bài viết (OWASP Top 10)</h2>
-    <form id="post-form">
+  <div class="container container-custom">
+    <h2 class="text-center mb-4">Quản lý bài viết (OWASP Top 10)</h2>
+    <form id="post-form" class="mb-4">
       <input type="hidden" id="post-id" />
-      <label>Tiêu đề</label>
-      <input type="text" id="title" required />
-      <label>Nội dung</label>
-      <textarea id="content" rows="4" required></textarea>
-      <input type="hidden" id="author_id" />
-      <button type="submit">Lưu</button>
-      <button type="button" id="cancel-edit" style="display:none;background:#ccc;color:#333;">Hủy</button>
+      <div class="mb-3">
+        <label for="title" class="form-label">Tiêu đề</label>
+        <input type="text" id="title" class="form-control" required />
+      </div>
+      <div class="mb-3">
+        <label for="content" class="form-label">Nội dung</label>
+        <textarea id="content" class="form-control" rows="4" required></textarea>
+      </div>
+      <input type="text" class="mb-3" id="author_id" readonly/>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Lưu</button>
+        <button type="button" id="cancel-edit" style="display:none;" class="btn btn-secondary">Hủy</button>
+      </div>
     </form>
-    <div class="message" id="message"></div>
-    <h3>Bài viết của bạn (author: dat)</h3>
-    <table>
-      <thead>
-        <tr><th>ID</th><th>Tiêu đề</th><th>Tác giả</th><th>Ngày tạo</th><th>Hành động</th></tr>
-      </thead>
-      <tbody id="posts-body-dat"></tbody>
+    <div class="message mb-3" id="message"></div>
+    <h3 class="mb-3">Bài viết của bạn (author: dat)</h3>
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped align-middle">
+        <thead class="table-light">
+          <tr><th>ID</th><th>Tiêu đề</th><th>Tác giả</th><th>Ngày tạo</th><th>Hành động</th></tr>
+        </thead>
+      <tbody id="posts-body-author"></tbody>
     </table>
-    <h3>Bài viết khác</h3>
-    <table>
-      <thead>
-        <tr><th>ID</th><th>Tiêu đề</th><th>Tác giả</th><th>Ngày tạo</th><th>Hành động</th></tr>
-      </thead>
-      <tbody id="posts-body-other"></tbody>
-    </table>
+    <h3 class="mb-3">Bài viết khác</h3>
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped align-middle">
+        <thead class="table-light">
+          <tr><th>ID</th><th>Tiêu đề</th><th>Tác giả</th><th>Ngày tạo</th><th>Hành động</th></tr>
+        </thead>
+        <tbody id="posts-body-other"></tbody>
+      </table>
+    </div>
+    <a href="/home">Quay lại màn hình chính</a>
   </div>
   <script>
     async function fetchPosts() {
@@ -60,17 +68,17 @@
         return;
       }
       if (data.success) {
-        const tbodyDat = document.getElementById('posts-body-dat');
+        const tbodyDat = document.getElementById('posts-body-author');
         const tbodyOther = document.getElementById('posts-body-other');
         tbodyDat.innerHTML = '';
         tbodyOther.innerHTML = '';
         data.posts.forEach(post => {
           const tr = document.createElement('tr');
           if (post.author_id === 'dat') {
-            tr.innerHTML = `<td>${post.id}</td><td>${post.title}</td><td>${post.author_id||''}</td><td>${post.created_at?post.created_at.split('T')[0]:''}</td><td class='actions'><button onclick='editPost(${JSON.stringify(post)})'>Sửa</button><button onclick='deletePost(${post.id})'>Xóa</button></td>`;
+            tr.innerHTML = `<td>${post.id}</td><td>${post.title}</td><td>${post.author_id||''}</td><td>${post.created_at?post.created_at.split('T')[0]:''}</td><td class='actions'><button onclick='editPost(${JSON.stringify(post)})' class='btn btn-sm btn-primary me-2 border'>Sửa</button><button onclick='deletePost(${post.id})' class='btn btn-sm btn-danger border'>Xóa</button></td>`;
             tbodyDat.appendChild(tr);
           } else {
-            tr.innerHTML = `<td>${post.id}</td><td>${post.title}</td><td>${post.author_id||''}</td><td>${post.created_at?post.created_at.split('T')[0]:''}</td><td class='actions'><button onclick='viewPost(${JSON.stringify(post)})'>Xem</button></td>`;
+            tr.innerHTML = `<td>${post.id}</td><td>${post.title}</td><td>${post.author_id||''}</td><td>${post.created_at?post.created_at.split('T')[0]:''}</td><td class='actions'><button onclick='viewPost(${JSON.stringify(post)})' class='btn btn-sm btn-outline-info border'>Xem</button></td>`;
             tbodyOther.appendChild(tr);
           }
         });

@@ -11,6 +11,12 @@
         <div class="card shadow p-4" style="min-width: 350px; max-width: 500px; width: 100%;">
             <h2 class="mb-4 text-center">Welcome, User!</h2>
             <p class="text-center">This is the home page for regular users.</p>
+            <nav class="mb-3">
+                <ul class="list-group">
+                    <li class="list-group-item text-center"><a href="/posts">My Post</a></li>
+                    <li class="list-group-item text-center"><a href="/profile/dat">My Profile</a></li>
+                </ul>
+            </nav>
             <form action="/logout" method="POST" class="text-center">
                 <button type="submit" class="btn btn-danger">Logout</button>
             </form>
