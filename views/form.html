@@ -1,13 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>SSRF Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 40px;
+    }
+    input[type="text"] {
+      width: 400px;
+      padding: 6px;
+    }
+    button {
+      padding: 6px 12px;
+      margin-left: 8px;
+    }
+    fieldset {
+      border: 1px solid #ccc;
+      padding: 12px;
+      max-width: 600px;
+    }
+  </style>
 </head>
 <body>
-  <h2>SSRF Demo (HTML file)</h2>
+  <h2>SSRF Demo</h2>
+
   <form method="POST" action="/fetch">
-    <input name="url" placeholder="Enter URL (e.g. http://example.com)" style="width:300px" />
-    <button type="submit">Fetch</button>
+    <fieldset>
+      <legend>Fetch URL from server</legend>
+      <label for="url">Enter URL to fetch (e.g. http://example.com):</label><br>
+      <input type="text" id="url" name="url" placeholder="http://example.com" required />
+      <button type="submit">Fetch</button>
+    </fieldset>
   </form>
+   <br>
+
+  <!-- ✅ Nút View Source -->
+  <form method="GET" action="/form-preview-source">
+    <button type="submit">View Server Code</button>
+  </form>
+
+  <!-- <p><strong>Note:</strong> The fetch behavior depends on <code>SECURITY_LEVEL</code> cookie (low / medium / high).</p> -->
 </body>
 </html>

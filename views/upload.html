@@ -4,10 +4,14 @@
   <title>Upload Update</title>
 </head>
 <body>
-  <h2>Upload Software Update (NO signature check!)</h2>
+  <h2>Upload</h2>
   <form action="/upload" method="POST" enctype="multipart/form-data">
-    <input type="file" name="updateFile" required />
-    <button type="submit">Upload</button>
-  </form>
+  <input type="file" name="updateFile" required />
+  
+  <!-- Trường hash chỉ dùng ở security level high -->
+  <input type="text" name="expectedHash" placeholder="Expected SHA256 hash" />
+  
+  <button type="submit">Upload</button>
+</form>
 </body>
 </html>

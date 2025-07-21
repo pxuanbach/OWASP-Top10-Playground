@@ -1,0 +1,63 @@
+const PostgresDB = require('../../lib/postgres');
+const bcrypt = require('bcrypt');
+const db = new PostgresDB();
+
+// A01 - High security version: parameterized queries, hashed password check, session management
+async function handleLoginHighSecurity(req, res) {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).redirect("/login?error=Missing username or password");
+    }
+
+    const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (result.rows.length === 0) {
+        return res.status(401).redirect("/login?error=Invalid username or password");
+    }
+
+    const user = result.rows[0];
+
+    if (user.locked_until && new Date() < new Date(user.locked_until)) {
+        return res.status(403).redirect("/login?error=Account is locked. Please try again later.");
+    }
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+        const failedAttempts = (user.failed_attempts || 0) + 1;
+        let lockedUntil = null;
+        if (failedAttempts > 5) {
+            lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+        }
+        await db.query(
+            'UPDATE users SET failed_attempts = $1, locked_until = $2 WHERE id = $3',
+            [failedAttempts, lockedUntil, user.id]
+        );
+        if (lockedUntil) {
+            return res.status(403).redirect("/login?error=Account locked due to multiple failed attempts.");
+        }
+        return res.status(401).redirect("/login?error=Invalid username or password");
+    }
+
+    await db.query(
+        'UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE id = $1',
+        [user.id]
+    );
+
+    req.session.regenerate((err) => {
+        if (err) {
+            return res.status(500).redirect("/login?error=Error during login");
+        }
+
+        req.session.user = {
+            id: user.id,
+            username: user.username,
+            role: user.role
+        };
+
+        if (user.role === 'admin') {
+            return res.redirect('/admin');
+        }
+        return res.redirect('/home');
+    });
+}
+
+module.exports = { handleLoginHighSecurity };

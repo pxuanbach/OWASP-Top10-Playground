@@ -6,6 +6,7 @@ const session = require('express-session');
 const multer = require('multer');
 const fs = require('fs');
 const cookieParser = require('cookie-parser');
+const hljs = require('highlight.js');
 
 const app = express();
 const PORT = 3000;
@@ -80,19 +81,19 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
-const { fetchURL } = require('./services/formService');
+const { fetchWithSecurity } = require('./services/formService');
 const { 
-    handleLoginLowSecurity,
-    handleLoginHighSecurity
-} = require('./services/loginService');
+    handleLoginLowSecurity
+} = require('./services/low/loginService');
+const { handleLoginHighSecurity } = require('./services/high/loginService')
+const { handleRegisterLowSecurity } = require('./services/low/registerService');
+const { handleRegisterHighSecurity } = require('./services/high/registerService');
 const {
-    handleRegisterLowSecurity,
-    handleRegisterHighSecurity
-} = require('./services/registerService');
-const {
-    getAllUsersLowSecurity,
-    getAllUsersHighSecurity
-} = require('./services/usersService');
+    getAllUsersLowSecurity
+} = require('./services//low/usersService');
+const {getAllUsersHighSecurity} = require('./services/high/usersService')
+const { secureSave } = require('./services/high/uploadService');
+const { insecureSave } = require('./services/low/uploadService');
 const { createPost, getPosts, getPostById, updatePost, deletePost } = require('./services/postService');
 const { getProfile, updateProfile, createProfile } = require('./services/profileService');
 
@@ -204,52 +205,113 @@ app.get('/admin/users', (req, res, next) => {
 });
 
 // Route dễ bị SSRF
+// app.post('/fetch', async (req, res) => {
+//   const url = req.body.url;
+//   try {
+//     const data = await fetchURL(url);
+//     res.send(`<pre>${data.substring(0, 200)}</pre>`);
+//   } catch (err) {
+//     res.send(`<p style="color:red">Error fetching: ${err.message}</p>`);
+//   }
+// });
+
+// A10
+app.get('/form-preview', (req, res) => {
+  res.sendFile(path.join(__dirname + "/views", 'form.html'));
+});
+
 app.post('/fetch', async (req, res) => {
-  const url = req.body.url;
+  const { url } = req.body;
+  const level = req.cookies.SECURITY_LEVEL || 'low';
+
   try {
-    const data = await fetchURL(url);
-    res.send(`<pre>${data.substring(0, 200)}</pre>`);
+    const data = await fetchWithSecurity(url, level);
+    res.send(`<pre>${JSON.stringify(data, null, 2)}</pre>`);
   } catch (err) {
-    res.send(`<p style="color:red">Error fetching: ${err.message}</p>`);
+    res.status(400).send(`<p style="color:red">Error: ${err.message}</p>`);
   }
 });
 
-app.get('/dashboard', (req, res) => {
-  const session = req.cookies.session;
+// app.get('/dashboard', (req, res) => {
+//   const session = req.cookies.session;
 
-  if (!session) {
-    return res.redirect('/login');
-  }
+//   if (!session) {
+//     return res.redirect('/login');
+//   }
 
-  if (session.endsWith('-fixedsessionid')) {
-    return res.sendFile(path.join(__dirname, 'views', 'dashboard.html'));
-  }
+//   if (session.endsWith('-fixedsessionid')) {
+//     return res.sendFile(path.join(__dirname, 'views', 'dashboard.html'));
+//   }
 
-  res.redirect('/login');
-});
+//   res.redirect('/login');
+// });
 
 // A08
 app.get('/upload', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'upload.html'));
 });
 
-// ❌ Route A08 lỗi – không kiểm tra chữ ký
-app.post('/upload/insecure', upload.single('updateFile'), (req, res) => {
-  const result = insecureSave(req.file);
-  res.send(`<p>(INSECURE) File uploaded: ${result.filename}</p>`);
-});
+// A08 - định tuyến theo SECURITY_LEVEL
+app.post('/upload', upload.single('updateFile'), (req, res) => {
+  const level = req.cookies.SECURITY_LEVEL || 'low';
 
-// ✅ Route FIX – kiểm tra SHA256 hash
-app.post('/upload/secure', upload.single('updateFile'), (req, res) => {
-  const expectedHash = req.body.expectedHash?.trim();
-
-  try {
-    const result = secureSave(req.file, expectedHash);
-    res.send(`<p>(SECURE) Verified & uploaded: ${result.filename}</p>`);
-  } catch (err) {
-    res.status(400).send(`<p style="color:red">Error: ${err.message}</p>`);
+  if (level === 'high') {
+    // ✅ FIX: kiểm tra chữ ký số
+    const expectedHash = req.body.expectedHash?.trim();
+    try {
+      const result = secureSave(req.file, expectedHash);
+      res.send(`<p>(SECURE) Verified & uploaded: ${result.filename}</p>`);
+    } catch (err) {
+      res.status(400).send(`<p style="color:red">Error: ${err.message}</p>`);
+    }
+  } else {
+    // ❌ Không kiểm tra
+    const result = insecureSave(req.file);
+    res.send(`<p>(INSECURE) File uploaded: ${result.filename}</p>`);
   }
+})
+
+// View source
+const pathToFormService = path.join(__dirname, 'services', 'formservice.js');
+
+app.get('/form-preview-source', (req, res) => {
+  const level = req.cookies.SECURITY_LEVEL || 'low';
+
+  fs.readFile(pathToFormService, 'utf8', (err, code) => {
+    if (err) return res.status(500).send('Failed to load source code.');
+
+    let extracted = '';
+    if (level === 'low') {
+      extracted = extractFunction(code, 'fetchURL');
+    } else if (level === 'medium') {
+      extracted = extractFunction(code, 'safeFetchURL');
+    } else if (level === 'high') {
+      extracted = extractFunction(code, 'verySafeFetchURL');
+    }
+
+    const highlighted = hljs.highlight(extracted, { language: 'javascript' }).value;
+
+    res.send(`
+      <html>
+        <head>
+          <title>View Source</title>
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+        </head>
+        <body>
+          <h2>Server Code: <code>services/formservice.js</code> (${level})</h2>
+          <pre><code class="hljs language-js">${highlighted}</code></pre>
+          <a href="/fetch">← Back</a>
+        </body>
+      </html>
+    `);
+  });
 });
+
+function extractFunction(code, functionName) {
+  const regex = new RegExp(`async function ${functionName}\\([^)]*\\) \\{[\\s\\S]*?^\\}`, 'm');
+  const match = code.match(regex);
+  return match ? match[0] : `// Cannot find function ${functionName}`;
+}
 
 
 app.listen(PORT, () => {
