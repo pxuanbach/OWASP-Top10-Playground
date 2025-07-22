@@ -1,4 +1,4 @@
-.PHONY: infras init
+.PHONY: infras init test-all test-a01 test-a03 test-a07 test-sequential
 
 infras:
 	docker compose -f infras/docker-compose.yml up -d
@@ -11,3 +11,19 @@ users:
 
 de-infras:
 	docker compose -f infras/docker-compose.yml down -v
+
+# Playwright test commands for OWASP vulnerabilities
+test:
+	npm run test
+
+test-a01:
+	npm run test:a01
+
+test-a03:
+	npm run test:a03
+
+test-a07:
+	npm run test:a07
+
+test-sequential:
+	npm run test:sequential
