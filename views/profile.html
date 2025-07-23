@@ -123,10 +123,10 @@
       const res = await fetch('/api/profile/' + username, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: {
-          "role": "admin",
-          "isHacked": true
-        }
+        body: JSON.stringify({
+          role: 'admin',
+          location: 'Hacked by OWASP Top 10 Playground'
+        })
       });
     </pre>
   </div>
@@ -206,7 +206,7 @@
       const username = document.getElementById('profile-username').value;
       const body = {
         role: 'admin',
-        isHacked: true
+        location: 'Hacked by OWASP Top 10 Playground'
       };
       
       try {

@@ -37,16 +37,31 @@
       </div>
       <div class="d-flex gap-2">
         <button type="submit" class="btn btn-primary">Lưu</button>
-        <button type="button" id="submit-admin" class="btn btn-warning">Submit với admin0</button>
+        <button type="button" id="submit-postid-1" class="btn btn-warning">Submit với postid của Bài viết mẫu 1</button>
+        <button type="button" id="show-code-btn" class="btn btn-info">Hiển thị Code</button>
         <button type="button" id="cancel-edit" style="display:none;" class="btn btn-secondary">Hủy</button>
       </div>
+      
+    
       <script>
-        document.getElementById('submit-admin').addEventListener('click', function() {
-          document.getElementById('author_id').value = 'admin0';
+        document.getElementById('submit-postid-1').addEventListener('click', function() {
+          document.getElementById('post-id').value = '1';
           document.getElementById('post-form').requestSubmit();
         });
       </script>
     </form>
+    <pre id="code-display" style="display: none; background: #f7fafd; padding: 16px; border-radius: 6px; margin-top: 16px; font-family: monospace; white-space: pre-wrap; border: 1px solid #ddd;">
+const res = await fetch('/api/posts/', {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    title: 'Hack Bài viết mẫu 4',
+    content: 'Hack Bài viết mẫu 4',
+    author_id: 'dat',
+    post_id: 1
+  })
+});
+    </pre>
     <div class="message mb-3" id="message"></div>
     <h3 class="mb-3">Bài viết của bạn (author: dat)</h3>
     <div class="table-responsive">
@@ -123,6 +138,20 @@
       document.getElementById('cancel-edit').style.display = 'none';
       document.getElementById('post-id').value = '';
     };
+    
+    // Toggle code display
+    document.getElementById('show-code-btn').onclick = function() {
+      const codeDisplay = document.getElementById('code-display');
+      const showCodeBtn = document.getElementById('show-code-btn');
+      if (window.getComputedStyle(codeDisplay).display === 'none') {
+        codeDisplay.style.display = 'block';
+        showCodeBtn.textContent = 'Ẩn Code';
+      } else {
+        codeDisplay.style.display = 'none';
+        showCodeBtn.textContent = 'Hiển thị Code';
+      }
+    };
+
     window.editPost = function(post) {
       document.getElementById('post-id').value = post.id;
       document.getElementById('title').value = post.title;
