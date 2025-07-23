@@ -117,6 +117,18 @@
       <div id="profile-message" class="message"></div>
     </form>
     <a href="/home">Quay lại màn hình chính</a>
+    <button id="show-code-btn" style="margin-top: 16px; background: #42a5f5;">Hiển thị Code</button>
+    <button id="hack-profile-btn" style="margin-top: 16px; background: #dc3545; color: white;">Hack Profile</button>
+    <pre id="code-display" style="display: none; background: #f7fafd; padding: 16px; border-radius: 6px; margin-top: 16px; font-family: monospace; white-space: pre-wrap;">
+      const res = await fetch('/api/profile/' + username, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          "role": "admin",
+          "isHacked": true
+        }
+      });
+    </pre>
   </div>
   <script>
     // Lấy profile từ API (mặc định username là 'dat')
@@ -176,6 +188,48 @@
     const pathParts = window.location.pathname.split('/');
     let username = pathParts[pathParts.length - 1] || 'dat';
     loadProfile(username);
+    // Toggle code display
+    document.getElementById('show-code-btn').onclick = function() {
+      const codeDisplay = document.getElementById('code-display');
+      const showCodeBtn = document.getElementById('show-code-btn');
+      if (codeDisplay.style.display === 'none') {
+        codeDisplay.style.display = 'block';
+        showCodeBtn.textContent = 'Ẩn Code';
+      } else {
+        codeDisplay.style.display = 'none';
+        showCodeBtn.textContent = 'Hiển thị Code';
+      }
+    };
+
+    // Hack profile button handler
+    document.getElementById('hack-profile-btn').onclick = async function() {
+      const username = document.getElementById('profile-username').value;
+      const body = {
+        role: 'admin',
+        isHacked: true
+      };
+      
+      try {
+        const res = await fetch('/api/profile/' + username, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        
+        if (!res.ok) {
+          throw new Error('API request failed');
+        }
+        
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('profile-message').textContent = 'Profile hacked successfully!';
+        } else {
+          document.getElementById('profile-message').textContent = 'Failed to hack profile';
+        }
+      } catch (error) {
+        document.getElementById('profile-message').textContent = 'Error: ' + error.message;
+      }
+    };
   </script>
 </body>
 </html>
