@@ -7,8 +7,9 @@
     "test": "npx playwright test --headed --workers 1",
     "test:a01": "npx playwright test tests/A01.BrokenAccessControl.spec.js --headed --workers 1",
     "test:a03": "npx playwright test tests/A03.Injection.spec.js --headed --workers 1",
+    "test:a04": "npx playwright test tests/A04.InsecureDesign.spec.js --headed --workers 1",
     "test:a07": "npx playwright test tests/A07.IdentificationAndAuthenticationFailures.spec.js --headed --workers 1",
-    "test:sequential": "npm run test:a01 && npm run test:a03 && npm run test:a07",
+    "test:sequential": "npm run test:a01 && npm run test:a03 && npm run test:a04 && npm run test:a07",
     "start": "nodemon index.js",
     "initdb": "node infras/init_db.js",
     "initdata": "node infras/init_data.js"

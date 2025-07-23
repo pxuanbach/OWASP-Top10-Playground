@@ -95,13 +95,9 @@ const {getAllUsersHighSecurity} = require('./services/high/usersService')
 const { secureSave } = require('./services/high/uploadService');
 const { insecureSave } = require('./services/low/uploadService');
 const { createPost, getPosts, getPostById, updatePost, deletePost } = require('./services/postService');
+const { createPostLowSecurity, updatePostLowSecurity } = require('./services/low/postService');
+const { createPostHighSecurity, updatePostHighSecurity } = require('./services/high/postService');
 const { getProfile, updateProfile, createProfile } = require('./services/profileService');
-
-app.get('/api/posts', getPosts);
-app.get('/api/posts/:id', getPostById);
-app.post('/api/posts', createPost);
-app.put('/api/posts/:id', updatePost);
-app.delete('/api/posts/:id', deletePost);
 
 // Profile API
 app.get('/api/profile/:username', getProfile);
@@ -178,6 +174,10 @@ app.get('/admin', (req, res, next) => {
     res.sendFile(path.join(__dirname + "/views", 'admin.html'));
 });
 
+app.get('/api/posts', getPosts);
+app.get('/api/posts/:id', getPostById);
+app.delete('/api/posts/:id', deletePost);
+
 // A01 & A07: Login
 app.post('/low/api/login', handleLoginLowSecurity);
 app.post('/high/api/login', handleLoginHighSecurity);
@@ -204,16 +204,11 @@ app.get('/admin/users', (req, res, next) => {
     }
 });
 
-// Route dễ bị SSRF
-// app.post('/fetch', async (req, res) => {
-//   const url = req.body.url;
-//   try {
-//     const data = await fetchURL(url);
-//     res.send(`<pre>${data.substring(0, 200)}</pre>`);
-//   } catch (err) {
-//     res.send(`<p style="color:red">Error fetching: ${err.message}</p>`);
-//   }
-// });
+// A04
+app.post('/low/api/posts', createPostLowSecurity);
+app.post('/high/api/posts', createPostHighSecurity);
+app.put('/low/api/posts/:id', updatePostLowSecurity);
+app.put('/high/api/posts/:id', updatePostHighSecurity);
 
 // A10
 app.get('/form-preview', (req, res) => {
@@ -231,20 +226,6 @@ app.post('/fetch', async (req, res) => {
     res.status(400).send(`<p style="color:red">Error: ${err.message}</p>`);
   }
 });
-
-// app.get('/dashboard', (req, res) => {
-//   const session = req.cookies.session;
-
-//   if (!session) {
-//     return res.redirect('/login');
-//   }
-
-//   if (session.endsWith('-fixedsessionid')) {
-//     return res.sendFile(path.join(__dirname, 'views', 'dashboard.html'));
-//   }
-
-//   res.redirect('/login');
-// });
 
 // A08
 app.get('/upload', (req, res) => {

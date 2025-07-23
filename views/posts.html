@@ -83,6 +83,13 @@ const res = await fetch('/api/posts/', {
     <a href="/home">Quay lại màn hình chính</a>
   </div>
   <script>
+    function getSecurityLevel() {
+      return document.cookie
+        .split('; ')
+        .find(row => row.startsWith('SECURITY_LEVEL='))
+        ?.split('=')[1] || 'low';
+    }
+    
     async function fetchPosts() {
       const res = await fetch('/api/posts');
       let data;
@@ -116,15 +123,20 @@ const res = await fetch('/api/posts/', {
     fetchPosts();
     document.getElementById('post-form').onsubmit = async function(e) {
       e.preventDefault();
+      const level = getSecurityLevel();
       const id = document.getElementById('post-id').value;
       const title = document.getElementById('title').value.trim();
       const content = document.getElementById('content').value.trim();
       const author_id = document.getElementById('author_id').value;
       let res;
       if (id) {
-        res = await fetch('/api/posts/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title,content}) });
+        // Use security level specific endpoint for update
+        const endpoint = level === 'high' ? `/high/api/posts/${id}` : `/low/api/posts/${id}`;
+        res = await fetch(endpoint, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title,content}) });
       } else {
-        res = await fetch('/api/posts', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title,content,author_id}) });
+        // Use security level specific endpoint for create
+        const endpoint = level === 'high' ? '/high/api/posts' : '/low/api/posts';
+        res = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title,content,author_id}) });
       }
       let data;
       if (res.headers.get('content-type') && res.headers.get('content-type').includes('application/json')) {

@@ -11,7 +11,6 @@ async function initData() {
         const md5Hash = crypto.createHash('md5').update('sample123').digest('hex');
         
         users_data = [
-            ['dat', passwordHash, 'user', 0, null, 'Hanoi'],
             ['admin0', md5Hash, 'admin', 0, null, '<script>alert("XSS-admin0")</script>'],
             ['admin1', passwordHash, 'admin', 0, null, 'Hanoi'],
             ['user0', md5Hash, 'user', 0, null, '<img src=x onerror=alert("XSS-user0")>'],
@@ -20,6 +19,8 @@ async function initData() {
             ['user3', passwordHash, 'user', 0, null, 'Ho Chi Minh'],
             ['user4', md5Hash, 'user', 0, null, 'Ho Chi Minh'],
             ['user5', passwordHash, 'user', 0, null, 'Binh Dinh'],
+            ['datndc0', md5Hash, 'user', 0, null, 'Hanoi'],
+            ['datndc1', passwordHash, 'user', 0, null, 'Hanoi'],
         ]
 
         for (const user of users_data) {
@@ -36,7 +37,7 @@ async function initData() {
                 (1, 'Bài viết mẫu 1', 'Đây là nội dung bài viết mẫu số 1.', 'admin0', NOW(), NOW()),
                 (2, 'Bài viết mẫu 2', 'Đây là nội dung bài viết mẫu số 2.', 'admin1', NOW(), NOW()),
                 (3, 'Bài viết mẫu 3', 'Đây là nội dung bài viết mẫu số 3.', 'user0', NOW(), NOW()),
-                (4, 'Bài viết mẫu 4', 'Đây là nội dung bài viết mẫu số 4.', 'dat', NOW(), NOW())
+                (4, 'Bài viết mẫu 4', 'Đây là nội dung bài viết mẫu số 4.', 'datndc', NOW(), NOW())
             ON CONFLICT (id) DO NOTHING`
         );
         console.log('Demo users inserted (if not already present).');
