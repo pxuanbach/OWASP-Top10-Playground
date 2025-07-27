@@ -4,43 +4,37 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SSRF Demo</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 40px;
-    }
-    input[type="text"] {
-      width: 400px;
-      padding: 6px;
-    }
-    button {
-      padding: 6px 12px;
-      margin-left: 8px;
-    }
-    fieldset {
-      border: 1px solid #ccc;
-      padding: 12px;
-      max-width: 600px;
-    }
-  </style>
+  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
-  <h2>SSRF Demo</h2>
+  <div class="container d-flex justify-content-center">
+    <div class="card shadow-sm rounded-3" style="min-width: 350px; max-width: 400px; width: 100%;">
+      <div class="card-body">
+        <h2 class="card-title mb-4">SSRF Demo</h2>
 
-  <form method="POST" action="/fetch">
-    <fieldset>
-      <legend>Fetch URL from server</legend>
-      <label for="url">Enter URL to fetch (e.g. http://example.com):</label><br>
-      <input type="text" id="url" name="url" placeholder="http://example.com" required />
-      <button type="submit">Fetch</button>
-    </fieldset>
-  </form>
-  <br>
-  <button id="show-code-btn" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#codeModal">
-    <i class="bi bi-code-slash me-2"></i>Show Code
-  </button>
+        <form method="POST" action="/fetch">
+          <fieldset>
+            <legend class="fs-5 fw-semibold mb-3">Fetch URL from server</legend>
+
+            <div class="mb-3">
+              <label for="url" class="form-label">Enter URL to fetch</label>
+              <input type="text" id="url" name="url" class="form-control" placeholder="http://example.com" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Fetch</button>
+          </fieldset>
+        </form>
+
+        <hr class="my-4">
+
+        <button id="show-code-btn" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#codeModal">
+          <i class="bi bi-code-slash me-2"></i>Show Code
+        </button>
+      </div>
+    </div>
+  </div>
   <!-- Code Modal -->
     <div class="modal fade" id="codeModal" tabindex="-1" aria-labelledby="codeModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl">
