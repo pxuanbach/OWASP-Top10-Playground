@@ -24,9 +24,43 @@ const upload = multer({ storage });
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
-app.use('/public', express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }));
+// Security-level-aware static file serving
+app.use('/uploads', (req, res, next) => {
+    const securityLevel = req.cookies.SECURITY_LEVEL || 'low';
+    
+    if (securityLevel === 'high') {
+        // High security: Block access to uploads directory
+        return res.status(403).send('Access Denied: Upload directory access is restricted in high security mode');
+    } else {
+        // Low security: Allow access with directory listing
+        express.static(path.join(__dirname, 'public', 'uploads'), { 
+            dotfiles: 'allow',
+            index: false // This will show directory listing if no index file exists
+        })(req, res, next);
+    }
+});
 
+app.use('/public', (req, res, next) => {
+    const securityLevel = req.cookies.SECURITY_LEVEL || 'low';
+    
+    if (securityLevel === 'high') {
+        // High security: Restrict access to public directory
+        if (req.path.includes('uploads') || req.path.includes('README.txt')) {
+            return res.status(403).send('Access Denied: This resource is restricted in high security mode');
+        }
+        // Allow access to JS files but not directory listing
+        express.static(path.join(__dirname, 'public'), { 
+            dotfiles: 'deny',
+            index: false
+        })(req, res, next);
+    } else {
+        // Low security: Allow full access with directory listing
+        express.static(path.join(__dirname, 'public'), { 
+            dotfiles: 'allow',
+            index: false // This will show directory listing
+        })(req, res, next);
+    }
+});
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.json());
@@ -91,26 +125,19 @@ const { handleRegisterHighSecurity } = require('./services/high/registerService'
 const {
     getAllUsersLowSecurity
 } = require('./services//low/usersService');
-const {getAllUsersHighSecurity} = require('./services/high/usersService')
+const {getAllUsersHighSecurity} = require('./services/high/usersService');
+const { getCurrentUserLowSecurity, getCurrentUserHighSecurity } = require('./services/usersService');
 const { secureSave } = require('./services/high/uploadService');
 const { insecureSave } = require('./services/low/uploadService');
-const { createPost, getPosts, getPostById, updatePost, deletePost } = require('./services/postService');
-const { getProfile, updateProfile, createProfile } = require('./services/profileService');
+const { getPosts, getPostById, deletePost } = require('./services/postService');
+const { createPostLowSecurity, updatePostLowSecurity } = require('./services/low/postService');
+const { createPostHighSecurity, updatePostHighSecurity } = require('./services/high/postService');
+const { getProfile, updateProfile } = require('./services/profileService');
 
-app.get('/api/posts', getPosts);
-app.get('/api/posts/:id', getPostById);
-app.post('/api/posts', createPost);
-app.put('/api/posts/:id', updatePost);
-app.delete('/api/posts/:id', deletePost);
-
-// Profile API
+// Profile API - Security-level aware
 app.get('/api/profile/:username', getProfile);
 app.put('/api/profile/:username', updateProfile);
-app.post('/api/profile', createProfile);
 
-app.use((err, req, res, next) => {
-    res.status(500).send('<pre>' + (err.stack || err.toString()) + '</pre>');
-});
 app.get('/login', (req, res) => {
     const level = req.cookies.SECURITY_LEVEL || 'low';
     if (level === 'high' && req.session && req.session.user) {
@@ -148,7 +175,20 @@ app.get('/config', (req, res) => {
 });
 
 app.post('/logout', (req, res) => {
-    req.session.destroy();
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    
+    // Destroy session for high security mode
+    if (req.session) {
+        req.session.destroy();
+    }
+    
+    // Clear authentication cookies for low security mode
+    if (level === 'low') {
+        res.clearCookie('current_user');
+        res.clearCookie('user_role');
+        res.clearCookie('user_location');
+    }
+    
     res.redirect('/login');
 });
 
@@ -178,6 +218,10 @@ app.get('/admin', (req, res, next) => {
     res.sendFile(path.join(__dirname + "/views", 'admin.html'));
 });
 
+app.get('/api/posts', getPosts);
+app.get('/api/posts/:id', getPostById);
+app.delete('/api/posts/:id', deletePost);
+
 // A01 & A07: Login
 app.post('/low/api/login', handleLoginLowSecurity);
 app.post('/high/api/login', handleLoginHighSecurity);
@@ -204,16 +248,57 @@ app.get('/admin/users', (req, res, next) => {
     }
 });
 
-// Route dễ bị SSRF
-// app.post('/fetch', async (req, res) => {
-//   const url = req.body.url;
-//   try {
-//     const data = await fetchURL(url);
-//     res.send(`<pre>${data.substring(0, 200)}</pre>`);
-//   } catch (err) {
-//     res.send(`<p style="color:red">Error fetching: ${err.message}</p>`);
-//   }
-// });
+// Get current user API - security-level-aware routing
+app.get('/api/me', (req, res) => {
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    if (level === 'high') {
+        return getCurrentUserHighSecurity(req, res);
+    } else {
+        return getCurrentUserLowSecurity(req, res);
+    }
+});
+
+// Alternative specific endpoints for testing
+app.get('/low/api/me', getCurrentUserLowSecurity);
+app.get('/high/api/me', getCurrentUserHighSecurity);
+
+// Test authentication status endpoint
+app.get('/api/auth-status', (req, res) => {
+    const level = req.cookies.SECURITY_LEVEL || 'low';
+    
+    if (level === 'high') {
+        // High security: Check session
+        const isAuthenticated = !!(req.session && req.session.user);
+        res.json({
+            success: true,
+            securityLevel: level,
+            isAuthenticated: isAuthenticated,
+            authMethod: 'session',
+            user: isAuthenticated ? req.session.user : null
+        });
+    } else {
+        // Low security: Check cookies
+        const currentUser = req.cookies.current_user;
+        const isAuthenticated = !!currentUser;
+        res.json({
+            success: true,
+            securityLevel: level,
+            isAuthenticated: isAuthenticated,
+            authMethod: 'cookie',
+            user: isAuthenticated ? {
+                username: currentUser,
+                role: req.cookies.user_role || 'user',
+                location: req.cookies.user_location || ''
+            } : null
+        });
+    }
+});
+
+// A04
+app.post('/low/api/posts', createPostLowSecurity);
+app.post('/high/api/posts', createPostHighSecurity);
+app.put('/low/api/posts/:id', updatePostLowSecurity);
+app.put('/high/api/posts/:id', updatePostHighSecurity);
 
 // A10
 app.get('/form-preview', (req, res) => {
@@ -231,20 +316,6 @@ app.post('/fetch', async (req, res) => {
     res.status(400).send(`<p style="color:red">Error: ${err.message}</p>`);
   }
 });
-
-// app.get('/dashboard', (req, res) => {
-//   const session = req.cookies.session;
-
-//   if (!session) {
-//     return res.redirect('/login');
-//   }
-
-//   if (session.endsWith('-fixedsessionid')) {
-//     return res.sendFile(path.join(__dirname, 'views', 'dashboard.html'));
-//   }
-
-//   res.redirect('/login');
-// });
 
 // A08
 app.get('/upload', (req, res) => {
@@ -283,8 +354,6 @@ app.get('/form-preview-source', (req, res) => {
     let extracted = '';
     if (level === 'low') {
       extracted = extractFunction(code, 'fetchURL');
-    } else if (level === 'medium') {
-      extracted = extractFunction(code, 'safeFetchURL');
     } else if (level === 'high') {
       extracted = extractFunction(code, 'verySafeFetchURL');
     }
@@ -313,6 +382,72 @@ function extractFunction(code, functionName) {
   return match ? match[0] : `// Cannot find function ${functionName}`;
 }
 
+// Route to demonstrate error handling and stack trace exposure
+app.get('/error-demo', (req, res, next) => {
+    const securityLevel = req.cookies.SECURITY_LEVEL || 'low';
+    
+    // Intentionally cause an error to demonstrate stack trace exposure
+    try {
+        // This will cause a ReferenceError
+        nonExistentFunction();
+    } catch (error) {
+        // Pass error to error handler
+        next(error);
+    }
+});
+
+// Security-level-aware error handling middleware
+app.use((err, req, res, next) => {
+    const securityLevel = req.cookies.SECURITY_LEVEL || 'low';
+    
+    console.error('Error occurred:', err.message);
+    
+    if (securityLevel === 'low') {
+        // Low security: Expose full stack trace (VULNERABILITY)
+        app.set('env', 'development');
+        process.env.NODE_ENV = 'development';
+        res.status(500).send(`
+            <html>
+                <head>
+                    <title>Internal Server Error</title>
+                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                </head>
+                <body class="container mt-4">
+                    <div class="alert alert-danger">
+                        <h3>🚨 Internal Server Error (Debug Mode)</h3>
+                        <p><strong>Error:</strong> ${err.message}</p>
+                        <p><strong>Stack Trace:</strong></p>
+                        <pre style="background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto;">${err.stack}</pre>
+                        <p class="mt-3"><strong>⚠️ Security Risk:</strong> Stack traces expose internal application structure and file paths!</p>
+                        <a href="/config" class="btn btn-primary">Go to Config</a>
+                        <a href="/error-demo" class="btn btn-warning ms-2">Trigger Error Again</a>
+                    </div>
+                </body>
+            </html>
+        `);
+    } else {
+        // High security: Hide stack trace details (SECURE)
+        app.set('env', 'production');
+        process.env.NODE_ENV = 'production';
+        res.status(500).send(`
+            <html>
+                <head>
+                    <title>Internal Server Error</title>
+                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                </head>
+                <body class="container mt-4">
+                    <div class="alert alert-warning">
+                        <h3>🔒 Internal Server Error (Production Mode)</h3>
+                        <p>An internal server error occurred. Please try again later.</p>
+                        <p><strong>✅ Security:</strong> Error details are hidden in production mode.</p>
+                        <a href="/config" class="btn btn-primary">Go to Config</a>
+                        <a href="/error-demo" class="btn btn-warning ms-2">Trigger Error Again</a>
+                    </div>
+                </body>
+            </html>
+        `);
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}/config`);

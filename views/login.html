@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Page</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
+
 <body class="bg-light">
     <div class="container d-flex justify-content-center align-items-center min-vh-100">
         <div class="card shadow p-4" style="min-width: 350px; max-width: 400px; width: 100%;">
@@ -24,10 +27,60 @@
                 <div class="mt-3 text-center">
                     <a href="/register">Register a new account</a>
                 </div>
+
             </form>
             <div id="security-level" class="mt-3 text-center text-secondary" style="font-size: 14px;"></div>
+            <div class="mt-2 text-center">
+                <a href="/config" class="text-decoration-none">
+                    <i class="bi bi-gear me-1"></i>Change security level
+                </a>
+            </div>
+            
+            <!-- Code Display Section -->
+            <div class="mt-3 text-center">
+                <button id="show-code-btn" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#codeModal">
+                    <i class="bi bi-code-slash me-2"></i>Show Login Code
+                </button>
+            </div>
         </div>
     </div>
+    
+    <!-- Code Modal -->
+    <div class="modal fade" id="codeModal" tabindex="-1" aria-labelledby="codeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="codeModalLabel">
+                        <i class="bi bi-file-earmark-code me-2"></i>Login Implementation 
+                        (<span id="code-security-level"></span> security)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="bg-light p-3 border-bottom">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            This code shows the actual implementation used for the current security level.
+                            Compare the differences between low and high security implementations.
+                        </small>
+                    </div>
+                    <pre class="mb-0" style="max-height: 70vh; overflow-y: auto; font-size: 14px; line-height: 1.4;"><code id="login-code" class="language-javascript"></code></pre>
+                </div>
+                <div class="modal-footer">
+                    <div class="me-auto">
+                        <span class="badge bg-secondary me-2">OWASP A01</span>
+                        <small class="text-muted">Broken Access Control</small>
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Include highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module">
         import { getSecurityLevel } from '/public/js/securityLevel.js';
         const level = getSecurityLevel();
@@ -39,13 +92,152 @@
         }
         // Display security level
         document.getElementById('security-level').textContent = 'Security level: ' + level;
+        document.getElementById('code-security-level').textContent = level;
 
         // Show login error if error param exists
         const params = new URLSearchParams(window.location.search);
         const error = params.get('error');
         if (error) {
-            document.getElementById('login-error').innerHTML = `<div class="alert alert-danger" role="alert">${decodeURIComponent(error)}`;
+            document.getElementById('login-error').innerHTML = `<div class="alert alert-danger" role="alert">${decodeURIComponent(error)}</div>`;
+        }
+
+        // Code display functionality
+        let codeLoaded = false;
+
+        // Load code when modal is shown
+        const codeModal = document.getElementById('codeModal');
+        codeModal.addEventListener('show.bs.modal', function () {
+            if (!codeLoaded) {
+                loadLoginCode();
+                codeLoaded = true;
+            }
+        });
+
+        // Load login code based on security level
+        function loadLoginCode() {
+            const codeElement = document.getElementById('login-code');
+            
+            const loginCodes = {
+                low: `// A01 - Low security version: vulnerable to SQL injection, plaintext password check, role-based redirect
+async function handleLoginLowSecurity(req, res) {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).redirect("/login?error=Missing username or password");
+    }
+
+    const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (result.rows.length === 0) {
+        return res.status(401).redirect("/login?error=Invalid username or password");
+    }
+    
+    const user = result.rows[0];
+    const md5Hash = crypto.createHash('md5').update(password).digest('hex');
+    if (md5Hash !== user.password) {
+        return res.status(401).redirect("/login?error=Invalid username or password");
+    }
+
+    // Low security: Store username in insecure cookie (VULNERABILITY)
+    res.cookie('current_user', username, { 
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        httpOnly: false, // Accessible via JavaScript (INSECURE)
+        secure: false    // Not HTTPS only (INSECURE)
+    });
+
+    if (user.role === 'admin') {
+        return res.redirect('/admin');
+    } else {
+        return res.redirect('/home');
+    }
+}
+
+// VULNERABILITIES in Low Security:
+// 1. MD5 hash for password (weak hashing)
+// 2. No rate limiting or account lockout
+// 3. Insecure cookie settings (httpOnly: false, secure: false)
+// 4. No session management
+// 5. Direct role-based redirect without proper session validation`,
+                
+                high: `// A01 - High security version: parameterized queries, hashed password check, session management
+async function handleLoginHighSecurity(req, res) {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).redirect("/login?error=Missing username or password");
+    }
+
+    // Parameterized query prevents SQL injection
+    const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (result.rows.length === 0) {
+        return res.status(401).redirect("/login?error=Invalid username or password");
+    }
+
+    const user = result.rows[0];
+    // Check if the account is currently locked
+    if (user.locked_until && new Date() < new Date(user.locked_until)) {
+        return res.status(403).redirect("/login?error=Account is locked. Please try again later.");
+    }
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+        // Increase failed login attempts
+        const failedAttempts = (user.failed_attempts || 0) + 1;
+        let lockedUntil = null;
+        if (failedAttempts >= 5) {
+            // Lock the account for 15 minutes after 5 failed attempts
+            lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+        }
+        await db.query(
+            'UPDATE users SET failed_attempts = $1, locked_until = $2 WHERE id = $3',
+            [failedAttempts, lockedUntil, user.id]
+        );
+        if (lockedUntil) {
+            return res.status(403).redirect("/login?error=Account locked due to multiple failed attempts. Please try again later.");
+        }
+        return res.status(401).redirect("/login?error=Invalid username or password");
+    }
+
+    // Successful login: reset failed_attempts and locked_until
+    await db.query(
+        'UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE id = $1',
+        [user.id]
+    );
+
+    // Store user information in session (excluding sensitive data)
+    req.session.user = {
+        id: user.id,
+        username: user.username,
+        role: user.role
+    };
+
+    // Regenerate session ID to prevent session fixation
+    req.session.regenerate((err) => {
+        if (err) {
+            return res.status(500).redirect("/login?error=Error during login");
+        }
+
+        // Redirect based on role with proper session management
+        if (user.role === 'admin') {
+            return res.redirect('/admin');
+        }
+        return res.redirect('/home');
+    });
+}
+
+// SECURITY FEATURES in High Security:
+// 1. bcrypt for password hashing (strong hashing with salt)
+// 2. Account lockout after 5 failed attempts (15 minutes)
+// 3. Proper session management with Express sessions
+// 4. Session regeneration to prevent session fixation
+// 5. Parameterized queries to prevent SQL injection
+// 6. Failed attempts tracking and lockout mechanism`
+            };
+
+            const code = loginCodes[level] || '// No code available for this security level';
+            codeElement.textContent = code;
+            
+            // Apply syntax highlighting
+            hljs.highlightElement(codeElement);
         }
     </script>
 </body>
+
 </html>

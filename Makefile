@@ -1,4 +1,4 @@
-.PHONY: infras init test-all test-a01 test-a03 test-a07 test-sequential
+.PHONY: infras init test-all test-a01 test-a03 test-a04 test-a07 test-sequential
 
 infras:
 	docker compose -f infras/docker-compose.yml up -d
@@ -21,6 +21,9 @@ test-a01:
 
 test-a03:
 	npm run test:a03
+
+test-a04:
+	npm run test:a04
 
 test-a07:
 	npm run test:a07

@@ -13,12 +13,19 @@ async function handleLoginLowSecurity(req, res) {
     if (result.rows.length === 0) {
         return res.status(401).redirect("/login?error=Invalid username or password");
     }
-
+    
     const user = result.rows[0];
     const md5Hash = crypto.createHash('md5').update(password).digest('hex');
     if (md5Hash !== user.password) {
         return res.status(401).redirect("/login?error=Invalid username or password");
     }
+
+    // Low security: Store username in insecure cookie (VULNERABILITY)
+    res.cookie('current_user', username, { 
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        httpOnly: false, // Accessible via JavaScript (INSECURE)
+        secure: false    // Not HTTPS only (INSECURE)
+    });
 
     if (user.role === 'admin') {
         return res.redirect('/admin');
