@@ -191,50 +191,50 @@ const res = await fetch(`/api/profile/${username}`, {
     };
 
     // Toggle code display
-    document.getElementById('show-code-btn').onclick = function() {
-      const codeDisplay = document.getElementById('code-display');
-      const showCodeBtn = document.getElementById('show-code-btn');
-      if (codeDisplay.style.display === 'none') {
-        codeDisplay.style.display = 'block';
-        showCodeBtn.innerHTML = '<i class="bi bi-eye-slash me-2"></i>Hide Code';
-      } else {
-        codeDisplay.style.display = 'none';
-        showCodeBtn.innerHTML = '<i class="bi bi-code-slash me-2"></i>Show Code';
-      }
-    };
+    // document.getElementById('show-code-btn').onclick = function() {
+    //   const codeDisplay = document.getElementById('code-display');
+    //   const showCodeBtn = document.getElementById('show-code-btn');
+    //   if (codeDisplay.style.display === 'none') {
+    //     codeDisplay.style.display = 'block';
+    //     showCodeBtn.innerHTML = '<i class="bi bi-eye-slash me-2"></i>Hide Code';
+    //   } else {
+    //     codeDisplay.style.display = 'none';
+    //     showCodeBtn.innerHTML = '<i class="bi bi-code-slash me-2"></i>Show Code';
+    //   }
+    // };
 
     // Hack profile button handler
-    document.getElementById('hack-profile-btn').onclick = async function() {
-      const username = document.getElementById('profile-username').value;
+    // document.getElementById('hack-profile-btn').onclick = async function() {
+    //   const username = document.getElementById('profile-username').value;
       
-      // Prototype pollution payload for lodash 4.6.1
-      const body = {
-        location: 'Hacked by OWASP Top 10 Playground',
-      };
+    //   // Prototype pollution payload for lodash 4.6.1
+    //   const body = {
+    //     location: 'Hacked by OWASP Top 10 Playground',
+    //   };
       
-      try {
-        const res = await fetch(`/api/profile/${username}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
+    //   try {
+    //     const res = await fetch(`/api/profile/${username}`, {
+    //       method: 'PUT',
+    //       headers: { 'Content-Type': 'application/json' },
+    //       body: JSON.stringify(body)
+    //     });
         
-        if (!res.ok) {
-          throw new Error('API request failed');
-        }
+    //     if (!res.ok) {
+    //       throw new Error('API request failed');
+    //     }
         
-        const data = await res.json();
-        if (data.success) {
-          showMessage('Profile hacked successfully! Role escalation detected.', 'warning');
-          // Reload profile to show changes
-          await loadProfile(username);
-        } else {
-          throw new Error('Failed to hack profile');
-        }
-      } catch (error) {
-        showMessage('Hack attempt failed: ' + error.message, 'danger');
-      }
-    };
+    //     const data = await res.json();
+    //     if (data.success) {
+    //       showMessage('Profile hacked successfully! Role escalation detected.', 'warning');
+    //       // Reload profile to show changes
+    //       await loadProfile(username);
+    //     } else {
+    //       throw new Error('Failed to hack profile');
+    //     }
+    //   } catch (error) {
+    //     showMessage('Hack attempt failed: ' + error.message, 'danger');
+    //   }
+    // };
 
     // Initialize page
     const pathParts = window.location.pathname.split('/');

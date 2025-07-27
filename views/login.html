@@ -70,6 +70,10 @@
                     <div class="me-auto">
                         <span class="badge bg-secondary me-2">OWASP A01</span>
                         <small class="text-muted">Broken Access Control</small>
+                        <span class="badge bg-warning text-dark me-2 ms-3">OWASP A07</span>
+                        <small class="text-muted">Identification and Authentication Failures</small>
+                        <span class="badge bg-info me-2 ms-3">OWASP A09</span>
+                        <small class="text-muted">Security Logging and Monitoring Failures</small>
                     </div>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
@@ -118,7 +122,7 @@
             const codeElement = document.getElementById('login-code');
             
             const loginCodes = {
-                low: `// A01 - Low security version: vulnerable to SQL injection, plaintext password check, role-based redirect
+                low: `// OWASP A01, A07, A09 - Low security version: Multiple vulnerabilities
 async function handleLoginLowSecurity(req, res) {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -136,7 +140,7 @@ async function handleLoginLowSecurity(req, res) {
         return res.status(401).redirect("/login?error=Invalid username or password");
     }
 
-    // Low security: Store username in insecure cookie (VULNERABILITY)
+    // A01: Broken Access Control - Store username in insecure cookie
     res.cookie('current_user', username, { 
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         httpOnly: false, // Accessible via JavaScript (INSECURE)
@@ -150,71 +154,92 @@ async function handleLoginLowSecurity(req, res) {
     }
 }
 
-// VULNERABILITIES in Low Security:
-// 1. MD5 hash for password (weak hashing)
-// 2. No rate limiting or account lockout
-// 3. Insecure cookie settings (httpOnly: false, secure: false)
-// 4. No session management
-// 5. Direct role-based redirect without proper session validation`,
+// VULNERABILITIES:
+// A01 - Broken Access Control:
+//   - Insecure cookie settings (httpOnly: false, secure: false)
+//   - Direct role-based redirect without proper session validation
+// A07 - Identification and Authentication Failures:
+//   - MD5 hash for password (weak hashing, easily crackable)
+//   - No rate limiting or account lockout (brute force vulnerable)
+// A09 - Security Logging and Monitoring Failures:
+//   - No logging of authentication attempts
+//   - No security event monitoring`,
                 
-                high: `// A01 - High security version: parameterized queries, hashed password check, session management
+                high: `// OWASP A01, A07, A09 - High security version: Comprehensive protection
+
+// A09: Security logging function for audit trail
+function logEvent(message) {
+    const logLine = \`[\${new Date().toISOString()}] \${message}\\n\`;
+    fs.appendFileSync(path.join(__dirname, '../../logs/auth.log'), logLine);
+}
+
 async function handleLoginHighSecurity(req, res) {
     const { username, password } = req.body;
+    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
     if (!username || !password) {
+        logEvent(\`Login failed (MISSING FIELDS) from IP \${clientIp}\`); // A09: Logging
         return res.status(400).redirect("/login?error=Missing username or password");
     }
 
-    // Parameterized query prevents SQL injection
     const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
     if (result.rows.length === 0) {
+        logEvent(\`Login failed (USERNAME NOT FOUND) for "\${username}" from IP \${clientIp}\`); // A09: Logging
         return res.status(401).redirect("/login?error=Invalid username or password");
     }
 
     const user = result.rows[0];
-    // Check if the account is currently locked
+
+    // A07: Account lockout protection against brute force
     if (user.locked_until && new Date() < new Date(user.locked_until)) {
+        logEvent(\`Login blocked (ACCOUNT LOCKED) for "\${username}" until \${user.locked_until} from IP \${clientIp}\`);
         return res.status(403).redirect("/login?error=Account is locked. Please try again later.");
     }
 
+    // A07: Strong password verification with bcrypt
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-        // Increase failed login attempts
         const failedAttempts = (user.failed_attempts || 0) + 1;
         let lockedUntil = null;
-        if (failedAttempts >= 5) {
-            // Lock the account for 15 minutes after 5 failed attempts
+        if (failedAttempts > 5) {
             lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+            logEvent(\`Login failed (BRUTE FORCE) for "\${username}" - Account locked until \${lockedUntil} from IP \${clientIp}\`);
+        } else {
+            logEvent(\`Login failed (WRONG PASSWORD) for "\${username}" - Attempt \${failedAttempts} from IP \${clientIp}\`);
         }
+
         await db.query(
             'UPDATE users SET failed_attempts = $1, locked_until = $2 WHERE id = $3',
             [failedAttempts, lockedUntil, user.id]
         );
+
         if (lockedUntil) {
-            return res.status(403).redirect("/login?error=Account locked due to multiple failed attempts. Please try again later.");
+            return res.status(403).redirect("/login?error=Account locked due to multiple failed attempts.");
         }
         return res.status(401).redirect("/login?error=Invalid username or password");
     }
 
-    // Successful login: reset failed_attempts and locked_until
+    // Reset failed attempts on successful login
     await db.query(
         'UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE id = $1',
         [user.id]
     );
 
-    // Store user information in session (excluding sensitive data)
-    req.session.user = {
-        id: user.id,
-        username: user.username,
-        role: user.role
-    };
-
-    // Regenerate session ID to prevent session fixation
+    // A01: Secure session management
     req.session.regenerate((err) => {
         if (err) {
+            logEvent(\`Login failed (SESSION ERROR) for "\${username}" from IP \${clientIp}\`); // A09: Logging
             return res.status(500).redirect("/login?error=Error during login");
         }
 
-        // Redirect based on role with proper session management
+        req.session.user = {
+            id: user.id,
+            username: user.username,
+            role: user.role
+        };
+
+        logEvent(\`Login success for "\${username}" (role: \${user.role}) from IP \${clientIp}\`); // A09: Logging
+
         if (user.role === 'admin') {
             return res.redirect('/admin');
         }
@@ -222,13 +247,19 @@ async function handleLoginHighSecurity(req, res) {
     });
 }
 
-// SECURITY FEATURES in High Security:
-// 1. bcrypt for password hashing (strong hashing with salt)
-// 2. Account lockout after 5 failed attempts (15 minutes)
-// 3. Proper session management with Express sessions
-// 4. Session regeneration to prevent session fixation
-// 5. Parameterized queries to prevent SQL injection
-// 6. Failed attempts tracking and lockout mechanism`
+// SECURITY FEATURES:
+// A01 - Broken Access Control (Fixed):
+//   ✅ Secure session management with Express sessions
+//   ✅ Session regeneration to prevent session fixation
+//   ✅ Proper role-based access control
+// A07 - Identification and Authentication Failures (Fixed):
+//   ✅ bcrypt for password hashing
+//   ✅ Brute force protection
+//   ✅ Failed attempts tracking and automatic lockout
+// A09 - Security Logging and Monitoring Failures (Fixed):
+//   ✅ Comprehensive logging with IP tracking (logs/auth.log)
+//   ✅ Event categorization for security analysis
+//   ✅ Timestamp logging for forensic investigation`
             };
 
             const code = loginCodes[level] || '// No code available for this security level';
