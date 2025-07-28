@@ -7,11 +7,12 @@ function secureSave(file, expectedHash) {
   const filePath = file.path;
   const fileBuffer = fs.readFileSync(filePath);
   const actualHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+  const hash = expectedHash.toLowerCase();
 
-  if (actualHash !== expectedHash) {
+  if (actualHash !== hash) {
     // Xóa file nếu sai chữ ký
     fs.unlinkSync(filePath);
-    throw new Error(`Signature verification failed! Expected: ${expectedHash}, Got: ${actualHash}`);
+    throw new Error(`Signature verification failed! Expected: ${hash}, Got: ${actualHash}`);
   }
 
   console.log(`(SECURE) File uploaded and verified: ${file.originalname}`);
